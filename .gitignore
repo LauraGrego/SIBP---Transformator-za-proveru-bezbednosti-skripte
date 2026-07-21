@@ -1,0 +1,25 @@
+# Local Python environments
+.venv/
+venv/
+env/
+
+# Python caches and tooling
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.idea/
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Generated model artifacts can be large and are reproducible from the dataset.
+
+# GitHub-scraped data is local because it can contain repository provenance and
+# code governed by the source repository's license.
+data/scraped.jsonl
+
+# Reference project used while developing the encoder.
+transformer-demo

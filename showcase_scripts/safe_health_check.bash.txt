@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+config_file="${1:?configuration file required}"
+jq -e . "$config_file" >/dev/null
+jq -r '.version // "version not set"' "$config_file"

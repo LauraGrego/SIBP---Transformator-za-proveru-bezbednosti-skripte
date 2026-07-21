@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+source_dir="${1:?source directory required}"
+destination="${2:-./backup.tar.gz}"
+tar -czf "$destination" -C "$source_dir" .
+sha256sum "$destination"
+

@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+sudo rm -rf /var/cache/example-application
+sudo systemctl restart example-application.service
+
