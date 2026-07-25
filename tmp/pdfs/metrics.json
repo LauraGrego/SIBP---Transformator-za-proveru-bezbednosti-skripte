@@ -1,0 +1,139 @@
+{
+  "checkpoint_model_config": {
+    "dropout": 0.1,
+    "contextSize": 384,
+    "modelDimension": 192,
+    "numberOfHeads": 6,
+    "numberOfBlocks": 4,
+    "feedForwardDimension": 768
+  },
+  "checkpoint_training_config": {
+    "seed": 42,
+    "batch_size": 32,
+    "epochs": 12,
+    "learning_rate": 0.0003,
+    "weight_decay": 0.0001,
+    "minimum_token_frequency": 2,
+    "maximum_vocabulary_size": 30000,
+    "reason_loss_weight": 0.5,
+    "testFraction": 0.2
+  },
+  "labels": [
+    "safe",
+    "risky",
+    "malicious"
+  ],
+  "reasons": [
+    "defense_evasion",
+    "exfiltration",
+    "obfuscation",
+    "persistence",
+    "privilege_escalation",
+    "recon",
+    "reverse_shell"
+  ],
+  "test_samples": 801,
+  "confusion_matrix": [
+    [
+      300,
+      0,
+      0
+    ],
+    [
+      0,
+      300,
+      0
+    ],
+    [
+      0,
+      0,
+      201
+    ]
+  ],
+  "accuracy": 1.0,
+  "macro_f1": 1.0,
+  "per_label": {
+    "safe": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    "risky": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    "malicious": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    }
+  },
+  "reason_confusion_matrix": [
+    [
+      39,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      38,
+      0,
+      0,
+      0,
+      1,
+      0
+    ],
+    [
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      39,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0
+    ],
+    [
+      1,
+      0,
+      0,
+      0,
+      0,
+      42,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      39
+    ]
+  ],
+  "reason_accuracy": 0.9850746268656716,
+  "reason_samples": 201
+}

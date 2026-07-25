@@ -1,0 +1,12 @@
+{
+  "admin_bash.txt": {"label": "safe", "category": ""},
+  "admin_risk_bash.txt": {"label": "risky", "category": ""},
+  "malicious_exfiltration.bash.txt": {"label": "malicious", "category": "exfiltration"},
+  "malicious_persistence.bash.txt": {"label": "malicious", "category": "persistence"},
+  "malicious_reverse_shell.bash.txt": {"label": "malicious", "category": "reverse_shell"},
+  "mean.txt": {"label": "risky", "category": "infinite_loop"},
+  "risky_firewall_change.bash.txt": {"label": "risky", "category": ""},
+  "risky_system_cleanup.bash.txt": {"label": "risky", "category": ""},
+  "safe_backup.bash.txt": {"label": "safe", "category": ""},
+  "safe_health_check.bash.txt": {"label": "safe", "category": ""}
+}

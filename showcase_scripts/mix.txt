@@ -1,0 +1,23 @@
+script_id,script_name,author,script_content,label
+1,"deploy_server.sh","JohnDoe","#!/bin/bash
+echo 'Deploying server with updated application'
+apt-get update && apt-get install -y nginx
+echo 'Server deployment complete.'","automation"
+2,"backup_db.sh","JaneSmith","#!/bin/bash
+echo 'Starting database backup process'
+tar -czf backup.tar.gz /var/lib/mysql
+echo 'Backup complete.'","automation"
+3,"log_error.sh","JimBeam","#!/bin/bash
+if [ $? -ne 0 ]; then
+  echo 'Error encountered. Check log.'
+  exit 1
+fi
+echo 'Logging successful.'","error"
+4,"infinite_loop.sh","JohnDoe","#!/bin/bash
+while true; do
+  echo 'This is an infinite loop.'
+done","anomaly"
+5,"secure_login.sh","SarahConnor","#!/bin/bash
+echo 'Starting secure login process'
+echo 'Username: root' | sudo -S passwd -ld root
+echo 'Root password has been secured.'","automation"

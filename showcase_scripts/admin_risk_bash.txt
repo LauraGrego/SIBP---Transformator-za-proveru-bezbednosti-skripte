@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+
+open_firewall_port() {
+    local port="$1"
+    local protocol="${2:-tcp}"
+    local source_ip="${3:-}"
+
+    if [[ $EUID -ne 0 ]]; then
+        echo "Run this function with sudo or as root."
+        return 1
+    fi
+
+    if [[ -z "$port" ]]; then
+        echo "Usage: open_firewall_port <port> [tcp|udp] [source-ip]"
+        echo "Example: open_firewall_port 53 udp"
+        echo "Example: open_firewall_port 22 tcp 192.168.1.0/24"
+        return 1
+    fi
+
+    if ! [[ "$port" =~ ^[0-9]+$ ]] || (( port < 1 || port > 65535 )); then
+        echo "Invalid port: $port"
+        return 1
+    fi
+
+    if [[ "$protocol" != "tcp" && "$protocol" != "udp" ]]; then
+        echo "Protocol must be tcp or udp."
+        return 1
+    fi
+
+    if command -v ufw >/dev/null 2>&1; then
+        echo "Using UFW..."
+
+        if [[ -n "$source_ip" ]]; then
+            ufw allow from "$source_ip" to any port "$port" proto "$protocol"
+        else
+            ufw allow "$port/$protocol"
+        fi
+
+        ufw reload
+        ufw status
+
+    elif command -v firewall-cmd >/dev/null 2>&1; then
+        echo "Using firewalld..."
+
+        if [[ -n "$source_ip" ]]; then
+            firewall-cmd --permanent \
+                --add-rich-rule="rule family='ipv4' source address='$source_ip' port port='$port' protocol='$protocol' accept"
+        else
+            firewall-cmd --permanent --add-port="$port/$protocol"
+        fi
+
+        firewall-cmd --reload
+        firewall-cmd --list-all
+
+    else
+        echo "Neither UFW nor firewalld is installed."
+        echo "Ubuntu/Debian: sudo apt install ufw"
+        echo "RHEL/Fedora:   sudo dnf install firewalld"
+        return 2
+    fi
+
+    echo "Opened $protocol port $port."
+}

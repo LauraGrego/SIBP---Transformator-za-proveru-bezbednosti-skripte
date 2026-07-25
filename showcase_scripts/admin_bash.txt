@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+
+dns_check() {
+    local domain="$1"
+    local dns_server="${2:-8.8.8.8}"
+
+    if [[ -z "$domain" ]]; then
+        echo "Usage: dns_check <domain> [dns-server]"
+        echo "Example: dns_check example.com 1.1.1.1"
+        return 1
+    fi
+
+    if ! command -v dig >/dev/null 2>&1; then
+        echo "Error: 'dig' is not installed."
+        echo "Ubuntu/Debian: sudo apt install dnsutils"
+        echo "RHEL/Fedora:   sudo dnf install bind-utils"
+        return 1
+    fi
+
+    echo "======================================"
+    echo "DNS report for: $domain"
+    echo "DNS server:     $dns_server"
+    echo "Date:           $(date)"
+    echo "======================================"
+
+    echo
+    echo "[1] Testing DNS server connectivity..."
+
+    if dig @"$dns_server" "$domain" +time=3 +tries=1 >/dev/null 2>&1; then
+        echo "DNS server is responding."
+    else
+        echo "Error: DNS server $dns_server is not responding."
+        return 2
+    fi
+
+    echo
+    echo "[2] A records:"
+    dig @"$dns_server" "$domain" A +short
+
+    echo
+    echo "[3] AAAA records:"
+    dig @"$dns_server" "$domain" AAAA +short
+
+    echo
+    echo "[4] MX records:"
+    dig @"$dns_server" "$domain" MX +short
+
+    echo
+    echo "[5] Name servers:"
+    dig @"$dns_server" "$domain" NS +short
+
+    echo
+    echo "[6] TXT records:"
+    dig @"$dns_server" "$domain" TXT +short
+
+    echo
+    echo "[7] DNS response details:"
+    dig @"$dns_server" "$domain" A +noall +answer +comments
+
+    echo
+    echo "[8] Reverse DNS lookup:"
+
+    local ip
+    ip=$(dig @"$dns_server" "$domain" A +short | head -n 1)
+
+    if [[ -n "$ip" ]]; then
+        echo "IP address: $ip"
+        dig @"$dns_server" -x "$ip" +short
+    else
+        echo "No IPv4 address found."
+    fi
+
+    echo
+    echo "DNS check completed."
+}

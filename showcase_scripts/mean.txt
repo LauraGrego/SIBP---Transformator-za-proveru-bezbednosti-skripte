@@ -1,0 +1,4 @@
+#!/bin/bash
+while true; do
+    echo "Consuming CPU without an exit condition"
+done
