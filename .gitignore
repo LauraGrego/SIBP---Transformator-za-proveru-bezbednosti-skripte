@@ -23,5 +23,3 @@ data/scraped.jsonl
 
 # Reference project used while developing the encoder.
 transformer-demo
-output
-tmp
