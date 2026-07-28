@@ -80,7 +80,7 @@ def predict_text(
             f"top model label is {label}, below the {minimumConfidence:.2f} "
             "minimum confidence"
         )
-    if label == "malicious":
+    if displayedLabel == "malicious":
         reasonProbabilities = reasonLogits.softmax(dim=1)[0]
         reasonId = reasonProbabilities.argmax().item()
         reason = reasonNames[reasonId]
@@ -91,7 +91,7 @@ def predict_text(
         result["explanation"] = REASON_EXPLANATIONS.get(
             reason, f"matches patterns associated with {reason.replace('_', ' ')}"
         )
-    elif label == "risky":
+    elif displayedLabel == "risky":
         riskyExplanation = explain_risky_behavior(script)
         result.update(riskyExplanation)
     return result

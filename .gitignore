@@ -23,3 +23,6 @@ data/scraped.jsonl
 
 # Reference project used while developing the encoder.
 transformer-demo
+!transformer-demo/
+transformer-demo/*
+!transformer-demo/bash_classifier_tutorial.ipynb

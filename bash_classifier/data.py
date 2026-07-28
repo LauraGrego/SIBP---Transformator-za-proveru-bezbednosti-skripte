@@ -229,6 +229,7 @@ def prepare_split_data(
     modelConfig: ModelConfig,
     trainingConfig: TrainingConfig,
     buildNewTokenizer: bool,
+    existingTokenizer: Tokenizer | None = None,
 ) -> tuple[BashDataset, BashDataset, Tokenizer, tuple[str, ...]]:
     """Prepare matching training and held-out datasets."""
     records = load_jsonl(datasetPath)
@@ -237,16 +238,17 @@ def prepare_split_data(
     )
     reasonNames = get_reason_names(trainingRecords)
     reasonToId = {name: index for index, name in enumerate(reasonNames)}
-    tokenizer = (
-        build_tokenizer(
+    if existingTokenizer is not None:
+        tokenizer = existingTokenizer
+    elif buildNewTokenizer:
+        tokenizer = build_tokenizer(
             trainingRecords,
             None,
             trainingConfig.minimumTokenFrequency,
             trainingConfig.maximumVocabularySize,
         )
-        if buildNewTokenizer
-        else Tokenizer.from_file(str(tokenizerPath))
-    )
+    else:
+        tokenizer = Tokenizer.from_file(str(tokenizerPath))
     return (
         BashDataset(trainingRecords, tokenizer, modelConfig.contextSize, reasonToId),
         BashDataset(testRecords, tokenizer, modelConfig.contextSize, reasonToId),

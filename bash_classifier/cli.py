@@ -17,7 +17,7 @@ def build_argument_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "command",
-        choices=("cpu", "gpu", "predict"),
+        choices=("cpu", "gpu", "predict", "test", "evaluate"),
     )
     parser.add_argument(
         "--dataset", type=Path, default=DEFAULT_DATASET
@@ -38,7 +38,10 @@ def build_argument_parser() -> argparse.ArgumentParser:
         default=DEFAULT_SHOWCASE_DIRECTORY,
     )
     parser.add_argument(
-        "--minimum-confidence", dest="minimumConfidence", type=float, default=0.65
+        "--minimum-confidence",
+        dest="minimumConfidence",
+        type=probability,
+        default=0.65,
     )
     parser.add_argument(
         "--evaluation-manifest",
@@ -60,4 +63,17 @@ def build_argument_parser() -> argparse.ArgumentParser:
         "--feed-forward-dimension", dest="feedForwardDimension", type=int, default=768
     )
     parser.add_argument("--dropout", type=float, default=0.1)
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="resume CPU/GPU training from --checkpoint; --epochs is the total target",
+    )
     return parser
+
+
+def probability(value: str) -> float:
+    """Parse a probability constrained to the inclusive interval from zero to one."""
+    number = float(value)
+    if not 0.0 <= number <= 1.0:
+        raise argparse.ArgumentTypeError("must be between 0 and 1")
+    return number

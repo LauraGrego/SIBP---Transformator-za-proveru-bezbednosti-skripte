@@ -2,16 +2,28 @@ import argparse
 import math
 import random
 from collections import Counter
+from collections.abc import Callable
 from contextlib import nullcontext
+from dataclasses import replace
 from typing import Sequence
 
 import torch
 import torch.nn as nn
+from tokenizers import Tokenizer
 from torch.utils.data import DataLoader
 
-from .config import LABELS, TrainingConfig
-from .config import ModelConfig
-from .data import make_data_loader, move_batch_to_device, prepare_split_data
+from .config import (
+    LABELS,
+    ModelConfig,
+    TrainingConfig,
+    model_config_from_dict,
+    training_config_from_dict,
+)
+from .data import (
+    make_data_loader,
+    move_batch_to_device,
+    prepare_split_data,
+)
 from .model import BashTransformerClassifier, make_model, save_checkpoint
 
 
@@ -118,11 +130,17 @@ def train_model(
     trainingConfig: TrainingConfig,
     device: torch.device,
     useMixedPrecision: bool,
-) -> list[float]:
-    """Train all configured epochs and return the loss history."""
+    initialEpoch: int = 0,
+    previousLosses: Sequence[float] = (),
+    scalerState: dict | None = None,
+    checkpointCallback: Callable[[int, Sequence[float], object], None] | None = None,
+) -> tuple[list[float], object]:
+    """Train through the target epoch and retain state needed for resuming."""
     scaler = make_gradient_scaler(useMixedPrecision)
-    losses = []
-    for epoch in range(1, trainingConfig.epochs + 1):
+    if scalerState:
+        scaler.load_state_dict(scalerState)
+    losses = list(previousLosses)
+    for epoch in range(initialEpoch + 1, trainingConfig.epochs + 1):
         loss = train_epoch(
             model,
             dataloader,
@@ -136,7 +154,9 @@ def train_model(
         )
         losses.append(loss)
         print(f"Epoch {epoch:02d}/{trainingConfig.epochs}: loss={loss:.4f}")
-    return losses
+        if checkpointCallback is not None:
+            checkpointCallback(epoch, losses, scaler)
+    return losses, scaler
 
 
 def train_new_model(
@@ -144,31 +164,67 @@ def train_new_model(
     device: torch.device,
     useMixedPrecision: bool,
 ) -> None:
+    checkpoint = None
+    initialEpoch = 0
+    previousLosses: list[float] = []
+    scalerState = None
+    if args.resume:
+        if not args.checkpoint.is_file():
+            raise FileNotFoundError(f"Checkpoint not found: {args.checkpoint}")
+        checkpoint = torch.load(
+            args.checkpoint, map_location=device, weights_only=True
+        )
+        if "optimizer_state_dict" not in checkpoint:
+            raise ValueError(
+                "Checkpoint has no optimizer state and cannot resume training"
+            )
+        modelConfig = model_config_from_dict(checkpoint["model_config"])
+        savedTrainingConfig = training_config_from_dict(
+            checkpoint["training_config"]
+        )
+        trainingConfig = replace(
+            savedTrainingConfig,
+            epochs=args.epochs,
+            batchSize=args.batchSize,
+        )
+        initialEpoch = int(checkpoint.get("completed_epochs", 0))
+        previousLosses = list(checkpoint.get("loss_history", ()))
+        scalerState = checkpoint.get("scaler_state_dict")
+        if trainingConfig.epochs <= initialEpoch:
+            raise ValueError(
+                f"--epochs must exceed the {initialEpoch} completed epochs"
+            )
+        tokenizer = Tokenizer.from_str(checkpoint["tokenizer_json"])
+    else:
+        modelConfig = ModelConfig(
+            contextSize=args.contextSize,
+            modelDimension=args.modelDimension,
+            numberOfHeads=args.heads,
+            numberOfBlocks=args.blocks,
+            feedForwardDimension=args.feedForwardDimension,
+            dropout=args.dropout,
+        )
+        trainingConfig = TrainingConfig(
+            seed=args.seed,
+            testFraction=args.testFraction,
+            batchSize=args.batchSize,
+            epochs=args.epochs,
+            learningRate=args.learningRate,
+            weightDecay=args.weightDecay,
+        )
+        tokenizer = None
 
-    modelConfig = ModelConfig(
-        contextSize=args.contextSize,
-        modelDimension=args.modelDimension,
-        numberOfHeads=args.heads,
-        numberOfBlocks=args.blocks,
-        feedForwardDimension=args.feedForwardDimension,
-        dropout=args.dropout,
-    )
-    trainingConfig = TrainingConfig(
-        seed=args.seed,
-        testFraction=args.testFraction,
-        batchSize=args.batchSize,
-        epochs=args.epochs,
-        learningRate=args.learningRate,
-        weightDecay=args.weightDecay,
-    )
     set_seed(trainingConfig.seed)
     trainingDataset, _, tokenizer, reasonNames = prepare_split_data(
         args.dataset,
         args.tokenizer,
         modelConfig,
         trainingConfig,
-        buildNewTokenizer=True,
+        buildNewTokenizer=not args.resume,
+        existingTokenizer=tokenizer,
     )
+    if checkpoint is not None and tuple(checkpoint["reason_names"]) != reasonNames:
+        raise ValueError("Dataset reason categories differ from the checkpoint")
     trainingLoader = make_data_loader(
         trainingDataset,
         tokenizer,
@@ -178,11 +234,15 @@ def train_new_model(
         seed=trainingConfig.seed,
     )
     model = make_model(tokenizer, reasonNames, modelConfig, device)
+    if checkpoint is not None:
+        model.load_state_dict(checkpoint["model_state_dict"])
     optimizer = torch.optim.AdamW(
         model.parameters(),
         lr=trainingConfig.learningRate,
         weight_decay=trainingConfig.weightDecay,
     )
+    if checkpoint is not None:
+        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     labelLoss = nn.CrossEntropyLoss(
         weight=class_weights(trainingDataset.records, device),
         label_smoothing=0.05,
@@ -195,6 +255,24 @@ def train_new_model(
     print(f"Using device: {device}")
     print(f"Training samples: {len(trainingDataset)}")
     print(f"Vocabulary size: {tokenizer.get_vocab_size()}")
+
+    def saveTrainingProgress(
+        completedEpochs: int, lossHistory: Sequence[float], scaler
+    ) -> None:
+        """Publish a resumable checkpoint after every completed epoch."""
+        save_checkpoint(
+            args.checkpoint,
+            model,
+            tokenizer,
+            modelConfig,
+            trainingConfig,
+            reasonNames,
+            optimizer,
+            completedEpochs,
+            scaler,
+            lossHistory,
+        )
+
     train_model(
         model,
         trainingLoader,
@@ -204,14 +282,10 @@ def train_new_model(
         trainingConfig,
         device,
         useMixedPrecision,
-    )
-    save_checkpoint(
-        args.checkpoint,
-        model,
-        tokenizer,
-        modelConfig,
-        trainingConfig,
-        reasonNames,
+        initialEpoch,
+        previousLosses,
+        scalerState,
+        saveTrainingProgress,
     )
     args.tokenizer.parent.mkdir(parents=True, exist_ok=True)
     tokenizer.save(str(args.tokenizer))

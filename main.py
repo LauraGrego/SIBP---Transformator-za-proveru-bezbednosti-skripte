@@ -3,7 +3,11 @@ from copy import copy
 
 from bash_classifier.cli import build_argument_parser
 from bash_classifier.cpu_training import train_on_cpu
-from bash_classifier.evaluation import evaluate_real_world_examples, test_saved_model
+from bash_classifier.evaluation import (
+    evaluate_real_world_examples,
+    evaluate_saved_model,
+    test_saved_model,
+)
 from bash_classifier.gpu_training import train_on_gpu
 from bash_classifier.prediction import predict_showcase_directory
 
@@ -37,5 +41,9 @@ if __name__ == "__main__":
         train_test_evaluate_cpu(commandArgs)
     elif commandArgs.command == "gpu":
         train_test_evaluate_gpu(commandArgs)
-    else:
+    elif commandArgs.command == "predict":
         predict_showcase_scripts(commandArgs)
+    elif commandArgs.command == "test":
+        test_saved_model(commandArgs)
+    else:
+        evaluate_saved_model(commandArgs)

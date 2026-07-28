@@ -12,6 +12,7 @@ from .config import (
     PAD_TOKEN,
     ModelConfig,
     TrainingConfig,
+    model_config_from_dict,
 )
 from .data import required_token_id
 
@@ -118,20 +119,28 @@ def save_checkpoint(
     modelConfig: ModelConfig,
     trainingConfig: TrainingConfig,
     reasonNames: Sequence[str],
+    optimizer: torch.optim.Optimizer | None = None,
+    completedEpochs: int = 0,
+    scaler=None,
+    lossHistory: Sequence[float] = (),
 ) -> None:
-    """Save weights and the configuration needed to reconstruct the model."""
+    """Save inference metadata and optional state required to resume training."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    torch.save(
-        {
-            "model_state_dict": model.state_dict(),
-            "tokenizer_json": tokenizer.to_str(),
-            "model_config": asdict(modelConfig),
-            "training_config": asdict(trainingConfig),
-            "labels": list(LABELS),
-            "reason_names": list(reasonNames),
-        },
-        path,
-    )
+    checkpoint = {
+        "model_state_dict": model.state_dict(),
+        "tokenizer_json": tokenizer.to_str(),
+        "model_config": asdict(modelConfig),
+        "training_config": asdict(trainingConfig),
+        "labels": list(LABELS),
+        "reason_names": list(reasonNames),
+        "completed_epochs": completedEpochs,
+        "loss_history": list(lossHistory),
+    }
+    if optimizer is not None:
+        checkpoint["optimizer_state_dict"] = optimizer.state_dict()
+    if scaler is not None:
+        checkpoint["scaler_state_dict"] = scaler.state_dict()
+    torch.save(checkpoint, path)
 
 
 def load_checkpoint(
@@ -145,10 +154,9 @@ def load_checkpoint(
         tokenizer = Tokenizer.from_file(str(tokenizerPath))
     if tuple(checkpoint["labels"]) != LABELS:
         raise ValueError("Checkpoint label order does not match this program")
-    modelConfig = (checkpoint["model_config"])
+    modelConfig = model_config_from_dict(checkpoint["model_config"])
     reasonNames = tuple(checkpoint["reason_names"])
     model = make_model(tokenizer, reasonNames, modelConfig, device)
-    stateValues = (checkpoint["model_state_dict"])
-    model.load_state_dict(stateValues)
+    model.load_state_dict(checkpoint["model_state_dict"])
     model.eval()
     return model, tokenizer, reasonNames, modelConfig

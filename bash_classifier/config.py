@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Any, Mapping
 
 
 LABELS = ("safe", "risky", "malicious")
@@ -43,3 +44,13 @@ class TrainingConfig:
     minimumTokenFrequency: int = 2
     maximumVocabularySize: int = 30_000
     reasonLossWeight: float = 0.5
+
+
+def model_config_from_dict(values: Mapping[str, Any]) -> ModelConfig:
+    """Reconstruct model settings stored as primitive checkpoint values."""
+    return ModelConfig(**dict(values))
+
+
+def training_config_from_dict(values: Mapping[str, Any]) -> TrainingConfig:
+    """Reconstruct training settings stored as primitive checkpoint values."""
+    return TrainingConfig(**dict(values))

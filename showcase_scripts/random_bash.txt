@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# Find all files whose names start with "test_" in the current directory and subdirectories
+find . -type f -name 'test_*'

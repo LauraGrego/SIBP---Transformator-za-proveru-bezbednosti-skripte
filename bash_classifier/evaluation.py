@@ -6,7 +6,7 @@ import json
 import torch
 from torch.utils.data import DataLoader
 
-from .config import LABELS
+from .config import LABELS, training_config_from_dict
 from .data import make_data_loader, move_batch_to_device, prepare_evaluation_data, prepare_split_data
 from .devices import choose_inference_device
 from .model import BashTransformerClassifier, load_checkpoint
@@ -152,13 +152,14 @@ def test_saved_model(args: argparse.Namespace) -> None:
         args.checkpoint, args.tokenizer, device
     )
     checkpoint = torch.load(args.checkpoint, map_location="cpu", weights_only=True)
-    trainingConfig = checkpoint["training_config"]
+    trainingConfig = training_config_from_dict(checkpoint["training_config"])
     _, testDataset, _, splitReasons = prepare_split_data(
         args.dataset,
         args.tokenizer,
         modelConfig,
         trainingConfig,
         buildNewTokenizer=False,
+        existingTokenizer=tokenizer,
     )
     if tuple(splitReasons) != tuple(reasonNames):
         raise ValueError("Dataset reason categories differ from the checkpoint")

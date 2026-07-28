@@ -66,7 +66,7 @@ source .venv/bin/activate
 ## CPU workflow
 
 The CPU function trains a new model, tests it on the reproducible held-out
-split, and then evaluates it against every row of the selected dataset:
+split, and then evaluates it against the curated showcase manifest:
 
 ```powershell
 python main.py cpu
@@ -94,6 +94,17 @@ python main.py cpu `
   --feed-forward-dimension 512
 ```
 
+New checkpoints include optimizer, completed-epoch, loss-history, and gradient
+scaler state. Resume an interrupted compatible run by setting the total target
+number of epochs:
+
+```powershell
+python main.py cpu --resume --epochs 20
+```
+
+Older checkpoints without optimizer state remain usable for prediction and
+evaluation, but cannot resume training.
+
 ## Predicting showcase scripts
 
 Predict every file inside `showcase_scripts`:
@@ -114,9 +125,27 @@ python main.py predict --showcase-directory path\to\scripts
 Use `--checkpoint` and `--tokenizer` with any workflow to select different
 saved artifacts.
 
+## Testing and evaluating a saved model
+
+Test the existing checkpoint on the reproducible held-out split without
+training:
+
+```powershell
+python main.py test
+```
+
+Evaluate it against every row of a selected labeled JSONL dataset:
+
+```powershell
+python main.py evaluate
+```
+
+Both commands use the tokenizer embedded in the checkpoint, so a mismatched
+external tokenizer cannot silently change the evaluation inputs.
+
 ## GPU training
 
-The GPU function performs the same train, held-out test, and full-dataset
+The GPU function performs the same train, held-out test, and curated-showcase
 evaluation sequence, but requires an NVIDIA CUDA GPU:
 
 ```powershell
@@ -206,6 +235,10 @@ an obvious pause or exit are classified as `risky` with reason
 `infinite_loop`. Predictions below `--minimum-confidence 0.65`
 are reported as `uncertain` instead of being presented as trustworthy labels.
 Empty files and unsupported tabular formats are reported as invalid inputs.
+A `safe` rule is limited to strict DNS diagnostics: it requires multiple real
+`dig` queries and permits only an allowlist of read-only shell helpers. File
+writes, zone transfers, privilege wrappers, unknown commands, or executable
+output strings disqualify the rule and continue to the model.
 
 Every `risky` prediction includes a reason when displayed. Recognized reasons
 include `firewall_change`, `destructive_file_operation`, `infinite_loop`,
